@@ -185,6 +185,14 @@ with tabs[0]:
         rr = st.number_input("Risk:Reward", value=3.0)
         result = st.selectbox("Result", ["OPEN","WIN","LOSS","BE"])
         notes = st.text_area("Notes")
+# --- Prices ---
+c_price1, c_price2, c_price3 = st.columns(3)
+with c_price1:
+    entry_price = st.number_input("Entry price", min_value=0.0, step=0.0001, format="%.5f")
+with c_price2:
+    sl_price = st.number_input("SL price", min_value=0.0, step=0.0001, format="%.5f")
+with c_price3:
+    exit_price = st.number_input("Exit price (optional)", min_value=0.0, step=0.0001, format="%.5f")
 
         h4_dir = st.selectbox("H4 Direction", ["UP","DOWN","RANGE"])
         h1_dir = st.selectbox("H1 Direction", ["UP","DOWN","RANGE"])
@@ -207,6 +215,9 @@ with tabs[0]:
                 symbol=symbol, direction=direction, entry_time=entry_time,
                 rr=rr, result=result, h4_dir=h4_dir, h1_dir=h1_dir, m15_dir=m15_dir,
                 mtf_score=mtf_score, session=session_name, notes=notes
+                 entry_price=(entry_price or None),
+                sl_price=(sl_price or None),
+                exit_price=(exit_price or None)
             )
             s.add(trade)
             s.commit()
