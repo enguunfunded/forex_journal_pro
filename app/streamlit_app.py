@@ -91,13 +91,13 @@ with tabs[2]:
     eng = get_engine()
 
     # 1) Trades list
-    st.markdown("#### Trades (latest 100)")
+    st.markdown("#### Trades (latest 300)")
     trades_df = pd.read_sql_query("""
         SELECT id, symbol, direction, session, rr, result,
                h4_dir, h1_dir, m15_dir, mtf_score, entry_time, notes
         FROM trade
         ORDER BY entry_time DESC
-        LIMIT 100
+        LIMIT 300
     """, eng, parse_dates=["entry_time"])
     if trades_df.empty:
         st.info("No trades yet.")
