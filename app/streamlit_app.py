@@ -24,10 +24,9 @@ with tabs[0]:
     with st.form("new_trade"):
         symbol = st.text_input("Symbol", "XAUUSD").upper().strip()
         direction = st.selectbox("Direction", ["BUY","SELL"])
-        # Streamlit зарим хувилбарт st.datetime_input байхгүй байж болно.
-d = st.date_input("Entry date", value=datetime.now().date())
-t = st.time_input("Entry time", value=datetime.now().time().replace(microsecond=0))
-entry_time = datetime.combine(d, t)
+        d = st.date_input("Entry date", value=datetime.now().date())
+        t = st.time_input("Entry time", value=datetime.now().time().replace(microsecond=0))
+        entry_time = datetime.combine(d, t)
 
         rr = st.number_input("Risk:Reward", value=3.0)
         result = st.selectbox("Result", ["OPEN","WIN","LOSS","BE"])
