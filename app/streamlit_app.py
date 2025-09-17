@@ -215,14 +215,16 @@ with tabs[0]:
         session_name = infer_session(entry_time)
         mtf_score = mtf_alignment_score(h4_dir,h1_dir,m15_dir)
         with get_session(DB_PATH) as s:
-            trade = Trade(
-                symbol=symbol, direction=direction, entry_time=entry_time,
-                rr=rr, result=result, h4_dir=h4_dir, h1_dir=h1_dir, m15_dir=m15_dir,
-                mtf_score=mtf_score, session=session_name, notes=notes
-                 entry_price=(entry_price or None),
-                sl_price=(sl_price or None),
-                exit_price=(exit_price or None)
-            )
+          trade = Trade(
+    symbol=symbol, direction=direction, entry_time=entry_time,
+    rr=rr, result=result,
+    h4_dir=h4_dir, h1_dir=h1_dir, m15_dir=m15_dir,
+    mtf_score=mtf_score, session=session_name, notes=notes,
+    entry_price=(entry_price or None),
+    sl_price=(sl_price or None),
+    exit_price=(exit_price or None)
+)
+
             s.add(trade)
             s.commit()
             trade_id = trade.id
