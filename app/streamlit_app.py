@@ -13,6 +13,19 @@ st.set_page_config(page_title="Forex Journal Pro", layout="wide")
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "journal.db")
 init_db(DB_PATH)
+# --- Seed default checklist items once ---
+DEFAULT_ITEMS = {
+    "asia_range_sweep": "Asia range liquidity sweep",
+    "bos_choch": "BOS/CHOCH",
+    "fvg_retracement": "FVG retracement",
+    "volume_spike": "Volume spike",
+}
+with get_session(DB_PATH) as s:
+    for k, lbl in DEFAULT_ITEMS.items():
+        exists = s.execute(select(ChecklistItem).where(ChecklistItem.key == k)).scalar_one_or_none()
+        if exists is None:
+            s.add(ChecklistItem(key=k, label=lbl))
+    s.commit()
 
 st.title("📒 Forex Journal Pro")
 
