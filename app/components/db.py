@@ -35,12 +35,19 @@ class TradeChecklist(Base):
     trade = relationship("Trade", back_populates="checklists")
     item = relationship("ChecklistItem")
 
+_ENGINE = None  # нэмэлт глобал хувьсагч
+
 def init_db(db_path: str):
-    global _SessionLocal
+    global _SessionLocal, _ENGINE
     url = f"sqlite:///{db_path}"
-    engine = create_engine(url, future=True)
-    Base.metadata.create_all(engine)
-    _SessionLocal = sessionmaker(bind=engine, future=True)
+    _ENGINE = create_engine(url, future=True)
+    Base.metadata.create_all(_ENGINE)
+    _SessionLocal = sessionmaker(bind=_ENGINE, future=True)
 
 def get_session(db_path: str):
     return _SessionLocal()
+
+def get_engine():
+    """Pandas read_sql_query ашиглахад хэрэгтэй"""
+    return _ENGINE
+
