@@ -11,6 +11,7 @@ A lightweight, local-first Forex trading journal with:
 ## Quick Start
 ```bash
 python --version
+cd /d "C:\Users\My\Downloads\forex_journal_pro-main"
 python -m venv .venv
 .venv\Scripts\activate   # Windows
 python -m pip install --upgrade pip --default-timeout=600 --no-cache-dir -i https://pypi.org/simple
