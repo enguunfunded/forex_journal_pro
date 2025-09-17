@@ -19,6 +19,9 @@ class Trade(Base):
     result = Column(String)
     notes = Column(Text)
     checklists = relationship("TradeChecklist", back_populates="trade")
+    entry_price = Column(Float, nullable=True)
+    sl_price    = Column(Float, nullable=True)
+    exit_price  = Column(Float, nullable=True)
 
 class ChecklistItem(Base):
     __tablename__ = "checklist_item"
