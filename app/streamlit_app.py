@@ -2,49 +2,57 @@ import streamlit as st
 from datetime import datetime
 import os
 import pandas as pd
-from components.db import init_db, get_session, Trade, ChecklistItem, TradeChecklist, get_engine
+from components.db import init_db, get_session, Trade, ChecklistItem, TradeChecklist
 from components.utils import infer_session, mtf_alignment_score
 from components.plotting import save_candles_image
 from components.data_fetch import get_ohlcv_window
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
+from components.db import init_db, get_session, Trade, ChecklistItem, TradeChecklist, get_engine
 
 st.set_page_config(page_title="Forex Journal Pro", layout="wide")
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "journal.db")
 init_db(DB_PATH)
-# --- Seed default checklist items once ---
-DEFAULT_ITEMS = {
-    "asia_range_sweep": "Asia range liquidity sweep",
-    "bos_choch": "BOS/CHOCH",
-    "fvg_retracement": "FVG retracement",
-    "volume_spike": "Volume spike",
-}
-with get_session(DB_PATH) as s:
-    for k, lbl in DEFAULT_ITEMS.items():
-        exists = s.execute(select(ChecklistItem).where(ChecklistItem.key == k)).scalar_one_or_none()
-        if exists is None:
-            s.add(ChecklistItem(key=k, label=lbl))
-    s.commit()
 
 st.title("📒 Forex Journal Pro")
 
 tabs = st.tabs(["➕ New Entry","📊 Dashboard","📁 Data"])
 
 # === New Trade Entry ===
+with tabs[0]:
+    st.subheader("New Trade Entry")
+    with st.form("new_trade"):
+        symbol = st.text_input("Symbol", "XAUUSD").upper().strip()
+        direction = st.selectbox("Direction", ["BUY","SELL"])
+        entry_time = st.datetime_input("Entry Time", datetime.now())
+        rr = st.number_input("Risk:Reward", value=3.0)
+        result = st.selectbox("Result", ["OPEN","WIN","LOSS","BE"])
+        notes = st.text_area("Notes")
+
+        h4_dir = st.selectbox("H4 Direction", ["UP","DOWN","RANGE"])
+        h1_dir = st.selectbox("H1 Direction", ["UP","DOWN","RANGE"])
+        m15_dir = st.selectbox("M15 Direction", ["UP","DOWN","RANGE"])
+
+        conds = {
+            "asia_range_sweep": st.checkbox("Asia range liquidity sweep"),
+            "bos_choch": st.checkbox("BOS/CHOCH"),
+            "fvg_retracement": st.checkbox("FVG retracement"),
+            "volume_spike": st.checkbox("Volume spike"),
+        }
 # === Dashboard ===
 with tabs[1]:
     st.subheader("Insights Dashboard")
 
     eng = get_engine()
 
-    # KPIs
+    # Товч KPI-ууд
     with get_session(DB_PATH) as s:
         total  = s.scalar(select(func.count()).select_from(Trade)) or 0
-        wins   = s.scalar(select(func.count()).where(Trade.result == "WIN")) or 0
-        losses = s.scalar(select(func.count()).where(Trade.result == "LOSS")) or 0
-        be     = s.scalar(select(func.count()).where(Trade.result == "BE")) or 0
-        open_  = s.scalar(select(func.count()).where(Trade.result == "OPEN")) or 0
+        wins   = s.scalar(select(func.count()).where(Trade.result=="WIN")) or 0
+        losses = s.scalar(select(func.count()).where(Trade.result=="LOSS")) or 0
+        be     = s.scalar(select(func.count()).where(Trade.result=="BE"))   or 0
+        open_  = s.scalar(select(func.count()).where(Trade.result=="OPEN")) or 0
 
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Total", total)
@@ -68,7 +76,7 @@ with tabs[1]:
         st.info("No data yet. Add trades to see session stats.")
 
     st.markdown("### Best Conditions (by session)")
-    st.caption("Нөхцөлийг ашигласан трейдийн winrate-ийг session-оор (≥3 трейд) харуулна.")
+    st.caption("Нөхцлийг ашигласан трейдийн winrate-ийг session-оор харуулна (≥3 трейд байх ёстой).")
     df2 = pd.read_sql_query("""
         SELECT t.session, ci.label,
                SUM(CASE WHEN t.result='WIN' THEN 1 ELSE 0 END)*1.0 / NULLIF(COUNT(*),0) AS winrate,
@@ -90,14 +98,14 @@ with tabs[2]:
 
     eng = get_engine()
 
-    # 1) Trades list
-    st.markdown("#### Trades (latest 300)")
+    # 1) Оролтуудын жагсаалт
+    st.markdown("#### Trades (latest 100)")
     trades_df = pd.read_sql_query("""
         SELECT id, symbol, direction, session, rr, result,
                h4_dir, h1_dir, m15_dir, mtf_score, entry_time, notes
         FROM trade
         ORDER BY entry_time DESC
-        LIMIT 300
+        LIMIT 100
     """, eng, parse_dates=["entry_time"])
     if trades_df.empty:
         st.info("No trades yet.")
@@ -106,7 +114,7 @@ with tabs[2]:
 
     st.markdown("---")
 
-    # 2) Upload OHLCV CSV
+    # 2) OHLCV CSV upload
     st.markdown("#### Upload OHLCV CSV (Datetime,Open,High,Low,Close,Volume)")
     up = st.file_uploader("CSV file", type=["csv"])
     if up:
@@ -123,7 +131,7 @@ with tabs[2]:
 
     st.markdown("---")
 
-    # 3) Re-generate candlestick images
+    # 3) Бүх трейдийн лааны зургуудыг дахин үүсгэх
     st.markdown("#### Re-generate candlestick images")
     if st.button("Re-generate All Images"):
         with get_session(DB_PATH) as s:
@@ -132,10 +140,8 @@ with tabs[2]:
         for tr in trades:
             try:
                 dfw = get_ohlcv_window(tr.symbol, tr.entry_time, minutes_before=90, minutes_after=30)
-                save_candles_image(
-                    dfw, tr.symbol, tr.entry_time,
-                    base_dir=os.path.join(os.path.dirname(__file__), "images")
-                )
+                save_candles_image(dfw, tr.symbol, tr.entry_time,
+                    base_dir=os.path.join(os.path.dirname(__file__), "images"))
                 ok += 1
             except Exception:
                 fail += 1
@@ -143,13 +149,13 @@ with tabs[2]:
 
     st.markdown("---")
 
-    # 4) Checklist Manager – add/delete
+    # 4) Checklist Manager – нөхцөл нэмэх/устгах
     st.markdown("#### Checklist Manager")
     new_label = st.text_input("New condition label", placeholder="Round number confluence")
     if st.button("Add condition") and new_label.strip():
         key = new_label.strip().lower().replace(" ", "_")
         with get_session(DB_PATH) as s:
-            exists = s.execute(select(ChecklistItem).where(ChecklistItem.key == key)).scalar_one_or_none()
+            exists = s.execute(select(ChecklistItem).where(ChecklistItem.key==key)).scalar_one_or_none()
             if exists is None:
                 s.add(ChecklistItem(key=key, label=new_label.strip()))
                 s.commit()
@@ -173,69 +179,24 @@ with tabs[2]:
     else:
         st.caption("No custom conditions yet.")
 
-with tabs[0]:
-    st.subheader("New Trade Entry")
-    with st.form("new_trade"):
-        symbol = st.text_input("Symbol", "XAUUSD").upper().strip()
-        direction = st.selectbox("Direction", ["BUY","SELL"])
-        d = st.date_input("Entry date", value=datetime.now().date())
-        t = st.time_input("Entry time", value=datetime.now().time().replace(microsecond=0))
-        entry_time = datetime.combine(d, t)
-
-        rr = st.number_input("Risk:Reward", value=3.0)
-        result = st.selectbox("Result", ["OPEN","WIN","LOSS","BE"])
-        notes = st.text_area("Notes")
-    # --- Prices ---
-    c_price1, c_price2, c_price3 = st.columns(3)
-    with c_price1:
-        entry_price = st.number_input("Entry price", min_value=0.0, step=0.0001, format="%.5f")
-    with c_price2:
-        sl_price = st.number_input("SL price", min_value=0.0, step=0.0001, format="%.5f")
-    with c_price3:
-        exit_price = st.number_input("Exit price (optional)", min_value=0.0, step=0.0001, format="%.5f")
-
-    # --- Directions ---
-    h4_dir = st.selectbox("H4 Direction", ["UP", "DOWN", "RANGE"])
-    h1_dir = st.selectbox("H1 Direction", ["UP", "DOWN", "RANGE"])
-    m15_dir = st.selectbox("M15 Direction", ["UP", "DOWN", "RANGE"])
-
-    # --- Checklist ---
-    conds = {
-        "asia_range_sweep": st.checkbox("Asia range liquidity sweep"),
-        "bos_choch": st.checkbox("BOS/CHOCH"),
-        "fvg_retracement": st.checkbox("FVG retracement"),
-        "volume_spike": st.checkbox("Volume spike"),
-    }
-
-    # --- Submit button ---
-    submit = st.form_submit_button("Save")
-
+        submit = st.form_submit_button("Save")
 
     if submit:
         session_name = infer_session(entry_time)
         mtf_score = mtf_alignment_score(h4_dir,h1_dir,m15_dir)
         with get_session(DB_PATH) as s:
-                 trade = Trade(
-            symbol=symbol, direction=direction, entry_time=entry_time,
-            rr=rr, result=result, h4_dir=h4_dir, h1_dir=h1_dir, m15_dir=m15_dir,
-            mtf_score=mtf_score, session=session_name, notes=notes,
-            entry_price=(entry_price or None),
-            sl_price=(sl_price or None),
-            exit_price=(exit_price or None)
-        )
-
-        # эдгээр мөрүүд Trade() дотор биш, дараагийн түвшинд байх ёстой
-        s.add(trade)
-        s.commit()
-        trade_id = trade.id
-
-        for key, checked in conds.items():
-            if checked:
-                item = ChecklistItem(key=key, label=key)
-                s.add(item)
-                s.commit()
-                s.add(TradeChecklist(trade_id=trade_id, item_id=item.id, checked=True))
-        s.commit()
-
-    st.success(f"Saved trade #{trade_id}")
-
+            trade = Trade(
+                symbol=symbol, direction=direction, entry_time=entry_time,
+                rr=rr, result=result, h4_dir=h4_dir, h1_dir=h1_dir, m15_dir=m15_dir,
+                mtf_score=mtf_score, session=session_name, notes=notes
+            )
+            s.add(trade)
+            s.commit()
+            trade_id = trade.id
+            for key,checked in conds.items():
+                if checked:
+                    item = ChecklistItem(key=key,label=key)
+                    s.add(item); s.commit()
+                    s.add(TradeChecklist(trade_id=trade_id,item_id=item.id,checked=True))
+            s.commit()
+        st.success(f"Saved trade #{trade_id}")
