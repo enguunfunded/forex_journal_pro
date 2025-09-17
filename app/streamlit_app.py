@@ -185,27 +185,31 @@ with tabs[0]:
         rr = st.number_input("Risk:Reward", value=3.0)
         result = st.selectbox("Result", ["OPEN","WIN","LOSS","BE"])
         notes = st.text_area("Notes")
-# --- Prices ---
-c_price1, c_price2, c_price3 = st.columns(3)
-with c_price1:
-    entry_price = st.number_input("Entry price", min_value=0.0, step=0.0001, format="%.5f")
-with c_price2:
-    sl_price = st.number_input("SL price", min_value=0.0, step=0.0001, format="%.5f")
-with c_price3:
-    exit_price = st.number_input("Exit price (optional)", min_value=0.0, step=0.0001, format="%.5f")
+    # --- Prices ---
+    c_price1, c_price2, c_price3 = st.columns(3)
+    with c_price1:
+        entry_price = st.number_input("Entry price", min_value=0.0, step=0.0001, format="%.5f")
+    with c_price2:
+        sl_price = st.number_input("SL price", min_value=0.0, step=0.0001, format="%.5f")
+    with c_price3:
+        exit_price = st.number_input("Exit price (optional)", min_value=0.0, step=0.0001, format="%.5f")
 
-        h4_dir = st.selectbox("H4 Direction", ["UP","DOWN","RANGE"])
-        h1_dir = st.selectbox("H1 Direction", ["UP","DOWN","RANGE"])
-        m15_dir = st.selectbox("M15 Direction", ["UP","DOWN","RANGE"])
+    # --- Directions ---
+    h4_dir = st.selectbox("H4 Direction", ["UP", "DOWN", "RANGE"])
+    h1_dir = st.selectbox("H1 Direction", ["UP", "DOWN", "RANGE"])
+    m15_dir = st.selectbox("M15 Direction", ["UP", "DOWN", "RANGE"])
 
-        conds = {
-            "asia_range_sweep": st.checkbox("Asia range liquidity sweep"),
-            "bos_choch": st.checkbox("BOS/CHOCH"),
-            "fvg_retracement": st.checkbox("FVG retracement"),
-            "volume_spike": st.checkbox("Volume spike"),
-        }
+    # --- Checklist ---
+    conds = {
+        "asia_range_sweep": st.checkbox("Asia range liquidity sweep"),
+        "bos_choch": st.checkbox("BOS/CHOCH"),
+        "fvg_retracement": st.checkbox("FVG retracement"),
+        "volume_spike": st.checkbox("Volume spike"),
+    }
 
-        submit = st.form_submit_button("Save")
+    # --- Submit button ---
+    submit = st.form_submit_button("Save")
+
 
     if submit:
         session_name = infer_session(entry_time)
