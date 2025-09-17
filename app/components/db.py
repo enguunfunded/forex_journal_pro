@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Text, Boolean, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
+from sqlalchemy import text
 
 Base = declarative_base()
 _SessionLocal = None
@@ -40,11 +41,22 @@ class TradeChecklist(Base):
 
 _ENGINE = None  # нэмэлт глобал хувьсагч
 
+def _safe_add_column(engine, table, coldef):
+    # coldef ж: "entry_price REAL"
+    with engine.connect() as conn:
+        cols = [r[1] for r in conn.exec_driver_sql(f"PRAGMA table_info({table})")]
+        cname = coldef.split()[0]
+        if cname not in cols:
+            conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {coldef}")
 def init_db(db_path: str):
     global _SessionLocal, _ENGINE
     url = f"sqlite:///{db_path}"
     _ENGINE = create_engine(url, future=True)
     Base.metadata.create_all(_ENGINE)
+     # Шинэ баганууд байхгүй бол аюулгүйгээр нэмнэ (өгөгдөл устгахгүй)
+    _safe_add_column(_ENGINE, "trade", "entry_price REAL")
+    _safe_add_column(_ENGINE, "trade", "sl_price REAL")
+    _safe_add_column(_ENGINE, "trade", "exit_price REAL")
     _SessionLocal = sessionmaker(bind=_ENGINE, future=True)
 
 def get_session(db_path: str):
