@@ -130,19 +130,41 @@ with tabs[2]:
 
     eng = get_engine()
 
-    # 1) Оролтуудын жагсаалт
+    # 1) Оролтуудын жагсаалт (+ checklist мэдээлэл)
     st.markdown("#### Trades (latest 100)")
     trades_df = pd.read_sql_query("""
-        SELECT id, symbol, direction, session, rr, result,
-               h4_dir, h1_dir, m15_dir, mtf_score, entry_time, notes
-        FROM trade
-        ORDER BY entry_time DESC
+        SELECT
+            t.id,
+            t.symbol,
+            t.direction,
+            t.session,
+            t.rr,
+            t.result,
+            t.h4_dir,
+            t.h1_dir,
+            t.m15_dir,
+            t.mtf_score,
+            t.entry_time,
+            t.notes,
+            COUNT(tc.id) AS cond_count,                                   -- хэдэн нөхцөл идэвхтэй
+            COALESCE(GROUP_CONCAT(ci.label, ' | '), '') AS conditions     -- ямар ямар нөхцөл
+        FROM trade AS t
+        LEFT JOIN trade_checklist AS tc ON tc.trade_id = t.id
+        LEFT JOIN checklist_item  AS ci ON ci.id = tc.item_id
+        GROUP BY t.id
+        ORDER BY t.entry_time DESC
         LIMIT 100
     """, eng, parse_dates=["entry_time"])
+
     if trades_df.empty:
         st.info("No trades yet.")
     else:
+        trades_df = trades_df.rename(columns={
+            "cond_count": "conds",        # хэдэн checklist
+            "entry_time": "time"          # илүү ойлгомжтой нэр
+        })
         st.dataframe(trades_df, use_container_width=True)
+
 
     st.markdown("---")
 
