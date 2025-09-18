@@ -245,14 +245,29 @@ with tabs[2]:
             c1.write(f"#{int(row['id'])}  {row['symbol']}  {row['direction']}  {row['time']:%Y-%m-%d %H:%M}")
             c2.write(f"Result: {row['result']} | RR: {row['rr']}")
             if c3.button("View", key=f"view_{int(row['id'])}"):
-                with get_session(DB_PATH) as s:
-                    tr = s.get(Trade, int(row["id"]))   # entry/sl/exit үнээ DB-ээс уншина
-                try:
-                    dfw = get_ohlcv_window(tr.symbol, tr.entry_time,
-                                           minutes_before=90, minutes_after=60)
-                    _plot_trade_chart(dfw, tr, show_tp=True)
-                except Exception as e:
-                    st.error(f"Чарт авахад алдаа: {e}")
+               with get_session(DB_PATH) as s:
+    tr = s.get(Trade, int(row["id"]))
+
+try:
+    # ✅ entry_time-ийг UTC aware болгоно (наив бол)
+    et = pd.Timestamp(tr.entry_time)
+    if et.tzinfo is None:
+        et = et.tz_localize("UTC")
+
+    dfw = get_ohlcv_window(tr.symbol, et, minutes_before=90, minutes_after=60)
+
+    # ✅ Хэрэв буцааж ирсэн дата UTC-тэй бол, графикт ашиглахаасаа өмнө timezone-оо авна
+    if "Datetime" in dfw.columns:
+        dt = pd.to_datetime(dfw["Datetime"])
+        if dt.dt.tz is not None:
+            dfw["Datetime"] = dt.dt.tz_convert(None)
+    elif isinstance(dfw.index, pd.DatetimeIndex) and dfw.index.tz is not None:
+        dfw.index = dfw.index.tz_convert(None)
+
+    _plot_trade_chart(dfw, tr, show_tp=True)
+
+except Exception as e:
+    st.error(f"Чарт авахад алдаа: {e}")
 
 
     st.markdown("---")
