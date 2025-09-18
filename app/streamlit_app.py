@@ -38,11 +38,35 @@ with tabs[0]:
         m15_dir = st.selectbox("M15 Direction", ["UP","DOWN","RANGE"])
 
         conds = {
-            "asia_range_sweep": st.checkbox("Asia range liquidity sweep"),
-            "bos_choch": st.checkbox("BOS/CHOCH"),
-            "fvg_retracement": st.checkbox("FVG retracement"),
-            "volume_spike": st.checkbox("Volume spike"),
-        }
+    "asia_range_sweep": st.checkbox("Азийн мужийн liquidity sweep"),
+    "bos_choch": st.checkbox("BOS/CHOCH (бүтцийн эвдрэл)"),
+    "fvg_retracement": st.checkbox("FVG буцаалт"),
+    "volume_spike": st.checkbox("Эзлэхүүн огцом өсөлт"),
+    "order_block": st.checkbox("Order Block (захиалгын блок)"),
+    "breaker_block": st.checkbox("Breaker Block"),
+    "liquidity_grab": st.checkbox("Liquidity авах хөдөлгөөн"),
+    "equal_highs_lows": st.checkbox("Тэгш high/low түвшин"),
+    "daily_bias": st.checkbox("Өдрийн чиглэл давхцах"),
+    "session_open": st.checkbox("Сешн нээлтийн нөлөө"),
+    "news_event": st.checkbox("Мэдээний нөлөө"),
+    "trendline_liquidity": st.checkbox("Trendline liquidity sweep"),
+             # 1. Толгой мөрүүд
+    "head_shoulders_4h": st.checkbox("Head & Shoulders (4H)"),
+    "head_shoulders_1h": st.checkbox("Head & Shoulders (1H)"),
+    "head_shoulders_15m": st.checkbox("Head & Shoulders (15M)"),
+
+    # 2. GD
+    "gd_cross": st.checkbox("Golden/Death Cross (GD)"),
+
+    # 3. Trendline
+    "trendline_confluence": st.checkbox("Trendline давхцал"),
+
+    # 4. Key Levels
+    "key_level_4h": st.checkbox("Key Level (4H)"),
+    "key_level_1h": st.checkbox("Key Level (1H)"),
+    "key_level_15m": st.checkbox("Key Level (15M)"),
+}
+
 
         # ✅ Submit товч формын дотор байх ёстой
         submit = st.form_submit_button("Save")
