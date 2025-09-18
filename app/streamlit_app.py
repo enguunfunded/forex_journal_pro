@@ -237,37 +237,39 @@ with tabs[2]:
         ax.grid(True, alpha=0.2)
         st.pyplot(fig, clear_figure=True)
 
-    # Мөр бүрт "View" товч
-    if not trades_df.empty:
-        st.markdown("##### Recent trades (click View)")
-        for _, row in trades_df.iterrows():
-            c1, c2, c3 = st.columns([5, 3, 1])
-            c1.write(f"#{int(row['id'])}  {row['symbol']}  {row['direction']}  {row['time']:%Y-%m-%d %H:%M}")
-            c2.write(f"Result: {row['result']} | RR: {row['rr']}")
-            if c3.button("View", key=f"view_{int(row['id'])}"):
-with get_session(DB_PATH) as s:
-    tr = s.get(Trade, int(row["id"]))
+ # Мөр бүрт "View" товч
+if not trades_df.empty:
+    st.markdown("#### Recent trades (click View)")
+    for _, row in trades_df.iterrows():
+        c1, c2, c3 = st.columns([5, 3, 1])
+        c1.write(f"#{int(row['id'])}  {row['symbol']}  {row['direction']}  {row['time']:%Y-%m-%d %H:%M}")
+        c2.write(f"Result: {row['result']} | RR: {row['rr']}")
+        if c3.button("View", key=f"view_{int(row['id'])}"):
 
-    try:
-        # ✅ entry_time-ийг UTC aware болгоно (нөв бол)
-        et = pd.Timestamp(tr.entry_time)
-        if et.tzinfo is None:
-            et = et.tz_localize("UTC")
+            # ← энэ бүх блок FOR болон IF-ийн дор ИНДЕНТТЭЙ байх ёстой
+            with get_session(DB_PATH) as s:
+                tr = s.get(Trade, int(row["id"]))
 
-        dfw = get_ohlcv_window(tr.symbol, et, minutes_before=90, minutes_after=60)
+            try:
+                # entry_time-ийг UTC aware болгох (хэрэв naïve бол)
+                et = pd.Timestamp(tr.entry_time)
+                if et.tzinfo is None:
+                    et = et.tz_localize("UTC")
 
-        # ✅ Хэрэв буцааж ирсэн дата UTC-тэй бол, график ашиглахаасаа өмнө timezone-оо авна
-        if "Datetime" in dfw.columns:
-            dt = pd.to_datetime(dfw["Datetime"])
-            if dt.dt.tz is not None:
-                dfw["Datetime"] = dt.dt.tz_convert(None)
-        elif isinstance(dfw.index, pd.DatetimeIndex) and dfw.index.tz is not None:
-            dfw.index = dfw.index.tz_convert(None)
+                dfw = get_ohlcv_window(tr.symbol, et, minutes_before=90, minutes_after=60)
 
-        _plot_trade_chart(dfw, tr, show_tp=True)
+                # Хэрэв буцсан дата нь UTC-тэй бол timezone-оо авах
+                if "Datetime" in dfw.columns:
+                    dt = pd.to_datetime(dfw["Datetime"])
+                    if dt.dt.tz is not None:
+                        dfw["Datetime"] = dt.dt.tz_convert(None)
+                elif isinstance(dfw.index, pd.DatetimeIndex) and dfw.index.tz is not None:
+                    dfw.index = dfw.index.tz_convert(None)
 
-    except Exception as e:
-        st.error(f"Чарт ачаалахад алдаа: {e}")
+                _plot_trade_chart(dfw, tr, show_tp=True)
+
+            except Exception as e:
+                st.error(f"График ачаалах алдаа: {e}")
 
 
 
