@@ -2,13 +2,12 @@ import streamlit as st
 from datetime import datetime
 import os
 import pandas as pd
-from components.db import init_db, get_session, Trade, ChecklistItem, TradeChecklist
+from components.db import init_db, get_session, get_engine, Trade, ChecklistItem, TradeChecklist
 from components.utils import infer_session, mtf_alignment_score
 from components.plotting import save_candles_image
 from components.data_fetch import get_ohlcv_window
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
-from components.db import init_db, get_session, Trade, ChecklistItem, TradeChecklist, get_engine
 
 st.set_page_config(page_title="Forex Journal Pro", layout="wide")
 
@@ -44,6 +43,34 @@ with tabs[0]:
             "fvg_retracement": st.checkbox("FVG retracement"),
             "volume_spike": st.checkbox("Volume spike"),
         }
+
+        # ✅ Submit товч формын дотор байх ёстой
+        submit = st.form_submit_button("Save")
+
+    # ✅ Хадгалах логик
+    if submit:
+        session_name = infer_session(entry_time)
+        mtf_score = mtf_alignment_score(h4_dir, h1_dir, m15_dir)
+        with get_session(DB_PATH) as s:
+            trade = Trade(
+                symbol=symbol, direction=direction, entry_time=entry_time,
+                rr=rr, result=result, h4_dir=h4_dir, h1_dir=h1_dir, m15_dir=m15_dir,
+                mtf_score=mtf_score, session=session_name, notes=notes
+            )
+            s.add(trade); s.commit()
+            trade_id = trade.id
+
+            for key, checked in conds.items():
+                if checked:
+                    # аль хэдийн байгаа эсэхийг шалгах
+                    item = s.execute(select(ChecklistItem).where(ChecklistItem.key == key)).scalar_one_or_none()
+                    if item is None:
+                        item = ChecklistItem(key=key, label=key.replace("_"," ").title())
+                        s.add(item); s.flush()
+                    s.add(TradeChecklist(trade_id=trade_id, item_id=item.id, checked=True))
+            s.commit()
+        st.success(f"Saved trade #{trade_id}")
+
 # === Dashboard ===
 with tabs[1]:
     st.subheader("Insights Dashboard")
@@ -96,6 +123,7 @@ with tabs[1]:
         st.dataframe(df2.round(3), use_container_width=True)
     else:
         st.info("Need ≥3 trades per condition to rank.")
+
 # === Data ===
 with tabs[2]:
     st.subheader("Data & Maintenance")
@@ -182,25 +210,3 @@ with tabs[2]:
                         st.experimental_rerun()
     else:
         st.caption("No custom conditions yet.")
-
-        submit = st.form_submit_button("Save")
-
-    if submit:
-        session_name = infer_session(entry_time)
-        mtf_score = mtf_alignment_score(h4_dir,h1_dir,m15_dir)
-        with get_session(DB_PATH) as s:
-            trade = Trade(
-                symbol=symbol, direction=direction, entry_time=entry_time,
-                rr=rr, result=result, h4_dir=h4_dir, h1_dir=h1_dir, m15_dir=m15_dir,
-                mtf_score=mtf_score, session=session_name, notes=notes
-            )
-            s.add(trade)
-            s.commit()
-            trade_id = trade.id
-            for key,checked in conds.items():
-                if checked:
-                    item = ChecklistItem(key=key,label=key)
-                    s.add(item); s.commit()
-                    s.add(TradeChecklist(trade_id=trade_id,item_id=item.id,checked=True))
-            s.commit()
-        st.success(f"Saved trade #{trade_id}")
