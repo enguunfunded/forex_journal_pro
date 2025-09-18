@@ -188,6 +188,71 @@ with tabs[2]:
             "entry_time": "time"          # илүү ойлгомжтой нэр
         })
         st.dataframe(trades_df, use_container_width=True)
+            # --- View chart for a trade ---
+    st.markdown("#### View chart of a trade")
+    st.caption("Доорх 'View' товчийг дарж тухайн оролтын үедх OHLCV-г Entry/SL/Exit/TP шугамтайгаар харна.")
+
+    import matplotlib.pyplot as plt
+
+    def _plot_trade_chart(dfw, tr, show_tp=True):
+        """Жижиг candlestick зураг зурах (mplfinance хэрэглэхгүй, matplotlib-оор гар аргаар)."""
+        import numpy as np
+        o = dfw["Open"].values
+        h = dfw["High"].values
+        l = dfw["Low"].values
+        c = dfw["Close"].values
+        x = np.arange(len(dfw))
+
+        fig, ax = plt.subplots(figsize=(10, 4))
+        # high-low шугам
+        ax.vlines(x, l, h, linewidth=1)
+        # body — өсөх/буурах
+        up = c >= o
+        down = ~up
+        ax.bar(x[up], c[up] - o[up], bottom=o[up], width=0.6)
+        ax.bar(x[down], o[down] - c[down], bottom=c[down], width=0.6)
+
+        ax.set_title(f"{tr.symbol}  @ {tr.entry_time:%Y-%m-%d %H:%M}  ({tr.direction})")
+        ax.set_xlabel("Bars")
+        ax.set_ylabel("Price")
+
+        # --- Entry/SL/Exit/TP шугамууд ---
+        if tr.entry_price:
+            ax.axhline(tr.entry_price, linestyle="--", linewidth=1.2, label=f"Entry {tr.entry_price:.2f}")
+        if tr.sl_price:
+            ax.axhline(tr.sl_price, linestyle=":", linewidth=1.2, label=f"SL {tr.sl_price:.2f}")
+        if tr.exit_price:
+            ax.axhline(tr.exit_price, linestyle="-.", linewidth=1.2, label=f"Exit {tr.exit_price:.2f}")
+
+        # TP (RR шугам)
+        if show_tp and tr.entry_price and tr.sl_price and tr.rr:
+            risk = abs(tr.entry_price - tr.sl_price)
+            if tr.direction.upper() == "BUY":
+                tp = tr.entry_price + risk * tr.rr
+            else:
+                tp = tr.entry_price - risk * tr.rr
+            ax.axhline(tp, linewidth=1.2, label=f"TP({tr.rr}R) {tp:.2f}")
+
+        ax.legend(loc="best", fontsize=8)
+        ax.grid(True, alpha=0.2)
+        st.pyplot(fig, clear_figure=True)
+
+    # Мөр бүрт "View" товч
+    if not trades_df.empty:
+        st.markdown("##### Recent trades (click View)")
+        for _, row in trades_df.iterrows():
+            c1, c2, c3 = st.columns([5, 3, 1])
+            c1.write(f"#{int(row['id'])}  {row['symbol']}  {row['direction']}  {row['time']:%Y-%m-%d %H:%M}")
+            c2.write(f"Result: {row['result']} | RR: {row['rr']}")
+            if c3.button("View", key=f"view_{int(row['id'])}"):
+                with get_session(DB_PATH) as s:
+                    tr = s.get(Trade, int(row["id"]))   # entry/sl/exit үнээ DB-ээс уншина
+                try:
+                    dfw = get_ohlcv_window(tr.symbol, tr.entry_time,
+                                           minutes_before=90, minutes_after=60)
+                    _plot_trade_chart(dfw, tr, show_tp=True)
+                except Exception as e:
+                    st.error(f"Чарт авахад алдаа: {e}")
 
 
     st.markdown("---")
